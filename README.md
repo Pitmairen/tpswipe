@@ -34,6 +34,9 @@ Create a config file on ~/.config/tpswipe.conf or specify a config file with the
 The file must contain the path to the /dev/input[X] device that represents the touchpad. Se the 
 example config file for an example configuration.
 
+Your user need to have read permission to the device. This can be done by adding
+your user to the appropriate group.
+
 There is also a -test which can be used to test if the gestures are detected. 
 
 
