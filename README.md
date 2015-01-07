@@ -14,12 +14,17 @@ Archlinux. I don't know if it will work on other hardware.
 
 ## Install
 
+You will need to install **go** to use this application.
+After [installing](https://golang.org/doc/install) go and
+setting up the working environment you can install the application
+with the following commands
+
 ```
 go get github.com/Pitmairen/tpswipe
-go install
+go install github.com/Pitmairen/tpswipe
 ```
 
-Then run the command tpswipe
+Then run the command *tpswipe*
 
 
 ## Config
