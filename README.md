@@ -4,7 +4,7 @@ This is a simple application that reads events form the touchpad
 and executes user defined commands when a gesture is detected.
 
 Currently only external commands can be executed. The application can not 
-create keyboard or mouse events on its one. This may change in the future.
+create keyboard or mouse events on its own. This may change in the future.
 
 It can detect swipes up,right,down,left with 2-5 fingers and pinch and spread whith 2-5 fingers.
 
