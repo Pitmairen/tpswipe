@@ -4,6 +4,9 @@ import (
 	"code.google.com/p/gcfg"
 	"flag"
 	"fmt"
+	"github.com/BurntSushi/xgbutil"
+	"github.com/BurntSushi/xgbutil/ewmh"
+	"github.com/BurntSushi/xgbutil/icccm"
 	"github.com/gvalkov/golang-evdev/evdev"
 	"math"
 	"os"
@@ -490,83 +493,135 @@ func createCommand(command string) *exec.Cmd {
 
 }
 
-// Do something when a gesture arrives
-func handleGesture(gest Gesture, cfg *Config) {
+func getActiveWindowClass(xutil *xgbutil.XUtil) (string, error) {
+
+	client, err := ewmh.ActiveWindowGet(xutil)
+
+	if err != nil {
+		return "", err
+	}
+
+	class, err := icccm.WmClassGet(xutil, client)
+
+	if err != nil {
+		return "", err
+	}
+
+	return class.Class, nil
+
+}
+
+func getCommand(gest Gesture, actions *ActionCollection) *exec.Cmd {
 
 	var cmd *exec.Cmd
 
 	switch gest.GestureType {
 	case SWIPE_UP:
 		switch {
-		case gest.FingerCount == 2 && len(cfg.Actions.Swipe2Up) > 0:
-			cmd = createCommand(cfg.Actions.Swipe2Up)
-		case gest.FingerCount == 3 && len(cfg.Actions.Swipe3Up) > 0:
-			cmd = createCommand(cfg.Actions.Swipe3Up)
-		case gest.FingerCount == 4 && len(cfg.Actions.Swipe4Up) > 0:
-			cmd = createCommand(cfg.Actions.Swipe4Up)
-		case gest.FingerCount == 5 && len(cfg.Actions.Swipe5Up) > 0:
-			cmd = createCommand(cfg.Actions.Swipe5Up)
+		case gest.FingerCount == 2 && len(actions.Swipe2Up) > 0:
+			cmd = createCommand(actions.Swipe2Up)
+		case gest.FingerCount == 3 && len(actions.Swipe3Up) > 0:
+			cmd = createCommand(actions.Swipe3Up)
+		case gest.FingerCount == 4 && len(actions.Swipe4Up) > 0:
+			cmd = createCommand(actions.Swipe4Up)
+		case gest.FingerCount == 5 && len(actions.Swipe5Up) > 0:
+			cmd = createCommand(actions.Swipe5Up)
 		}
 	case SWIPE_DOWN:
 		switch {
-		case gest.FingerCount == 2 && len(cfg.Actions.Swipe2Down) > 0:
-			cmd = createCommand(cfg.Actions.Swipe2Down)
-		case gest.FingerCount == 3 && len(cfg.Actions.Swipe3Down) > 0:
-			cmd = createCommand(cfg.Actions.Swipe3Down)
-		case gest.FingerCount == 4 && len(cfg.Actions.Swipe4Down) > 0:
-			cmd = createCommand(cfg.Actions.Swipe4Down)
-		case gest.FingerCount == 5 && len(cfg.Actions.Swipe5Down) > 0:
-			cmd = createCommand(cfg.Actions.Swipe5Down)
+		case gest.FingerCount == 2 && len(actions.Swipe2Down) > 0:
+			cmd = createCommand(actions.Swipe2Down)
+		case gest.FingerCount == 3 && len(actions.Swipe3Down) > 0:
+			cmd = createCommand(actions.Swipe3Down)
+		case gest.FingerCount == 4 && len(actions.Swipe4Down) > 0:
+			cmd = createCommand(actions.Swipe4Down)
+		case gest.FingerCount == 5 && len(actions.Swipe5Down) > 0:
+			cmd = createCommand(actions.Swipe5Down)
 		}
 	case SWIPE_LEFT:
 		switch {
-		case gest.FingerCount == 2 && len(cfg.Actions.Swipe2Left) > 0:
-			cmd = createCommand(cfg.Actions.Swipe2Left)
-		case gest.FingerCount == 3 && len(cfg.Actions.Swipe3Left) > 0:
-			cmd = createCommand(cfg.Actions.Swipe3Left)
-		case gest.FingerCount == 4 && len(cfg.Actions.Swipe4Left) > 0:
-			cmd = createCommand(cfg.Actions.Swipe4Left)
-		case gest.FingerCount == 5 && len(cfg.Actions.Swipe5Left) > 0:
-			cmd = createCommand(cfg.Actions.Swipe5Left)
+		case gest.FingerCount == 2 && len(actions.Swipe2Left) > 0:
+			cmd = createCommand(actions.Swipe2Left)
+		case gest.FingerCount == 3 && len(actions.Swipe3Left) > 0:
+			cmd = createCommand(actions.Swipe3Left)
+		case gest.FingerCount == 4 && len(actions.Swipe4Left) > 0:
+			cmd = createCommand(actions.Swipe4Left)
+		case gest.FingerCount == 5 && len(actions.Swipe5Left) > 0:
+			cmd = createCommand(actions.Swipe5Left)
 		}
 	case SWIPE_RIGHT:
 		switch {
-		case gest.FingerCount == 2 && len(cfg.Actions.Swipe2Right) > 0:
-			cmd = createCommand(cfg.Actions.Swipe2Right)
-		case gest.FingerCount == 3 && len(cfg.Actions.Swipe3Right) > 0:
-			cmd = createCommand(cfg.Actions.Swipe3Right)
-		case gest.FingerCount == 4 && len(cfg.Actions.Swipe4Right) > 0:
-			cmd = createCommand(cfg.Actions.Swipe4Right)
-		case gest.FingerCount == 5 && len(cfg.Actions.Swipe5Right) > 0:
-			cmd = createCommand(cfg.Actions.Swipe5Right)
+		case gest.FingerCount == 2 && len(actions.Swipe2Right) > 0:
+			cmd = createCommand(actions.Swipe2Right)
+		case gest.FingerCount == 3 && len(actions.Swipe3Right) > 0:
+			cmd = createCommand(actions.Swipe3Right)
+		case gest.FingerCount == 4 && len(actions.Swipe4Right) > 0:
+			cmd = createCommand(actions.Swipe4Right)
+		case gest.FingerCount == 5 && len(actions.Swipe5Right) > 0:
+			cmd = createCommand(actions.Swipe5Right)
 		}
 	case PINCH:
 		switch {
-		case gest.FingerCount == 2 && len(cfg.Actions.Pinch2) > 0:
-			cmd = createCommand(cfg.Actions.Pinch2)
-		case gest.FingerCount == 3 && len(cfg.Actions.Pinch3) > 0:
-			cmd = createCommand(cfg.Actions.Pinch3)
-		case gest.FingerCount == 4 && len(cfg.Actions.Pinch4) > 0:
-			cmd = createCommand(cfg.Actions.Pinch4)
-		case gest.FingerCount == 5 && len(cfg.Actions.Pinch5) > 0:
-			cmd = createCommand(cfg.Actions.Pinch5)
+		case gest.FingerCount == 2 && len(actions.Pinch2) > 0:
+			cmd = createCommand(actions.Pinch2)
+		case gest.FingerCount == 3 && len(actions.Pinch3) > 0:
+			cmd = createCommand(actions.Pinch3)
+		case gest.FingerCount == 4 && len(actions.Pinch4) > 0:
+			cmd = createCommand(actions.Pinch4)
+		case gest.FingerCount == 5 && len(actions.Pinch5) > 0:
+			cmd = createCommand(actions.Pinch5)
 		}
 	case SPREAD:
 		switch {
-		case gest.FingerCount == 2 && len(cfg.Actions.Spread2) > 0:
-			cmd = createCommand(cfg.Actions.Spread2)
-		case gest.FingerCount == 3 && len(cfg.Actions.Spread3) > 0:
-			cmd = createCommand(cfg.Actions.Spread3)
-		case gest.FingerCount == 4 && len(cfg.Actions.Spread4) > 0:
-			cmd = createCommand(cfg.Actions.Spread4)
-		case gest.FingerCount == 5 && len(cfg.Actions.Spread5) > 0:
-			cmd = createCommand(cfg.Actions.Spread5)
+		case gest.FingerCount == 2 && len(actions.Spread2) > 0:
+			cmd = createCommand(actions.Spread2)
+		case gest.FingerCount == 3 && len(actions.Spread3) > 0:
+			cmd = createCommand(actions.Spread3)
+		case gest.FingerCount == 4 && len(actions.Spread4) > 0:
+			cmd = createCommand(actions.Spread4)
+		case gest.FingerCount == 5 && len(actions.Spread5) > 0:
+			cmd = createCommand(actions.Spread5)
 		}
 
 	}
 
+	return cmd
+
+}
+
+// Do something when a gesture arrives
+func handleGesture(gest Gesture, xutil *xgbutil.XUtil, cfg *Config) {
+
+	var cmd *exec.Cmd
+
+	className, err := getActiveWindowClass(xutil)
+
+	if err != nil {
+		fmt.Println("Failed to get active window.", err)
+		return
+	}
+
+	actions := cfg.Actions[className]
+
+	if actions == nil {
+		// If its no specific window actions try the global actions
+		actions = cfg.Actions[""]
+	} else {
+		cmd = getCommand(gest, actions)
+		// If there is no action is specified for this gesture type try the global actions
+		if cmd == nil {
+			actions = cfg.Actions[""]
+		}
+	}
+
+	// If no actions is defined just return
+	if actions == nil {
+		return
+	}
+
+	cmd = getCommand(gest, actions)
+
 	if cmd != nil {
-		// fmt.Println("Running command: ", cmd)
 		err := cmd.Run()
 		if err != nil {
 			fmt.Println("Failed to run command:", err)
@@ -624,46 +679,55 @@ func main() {
 
 	} else {
 
+		xutil, err := xgbutil.NewConn()
+
+		if err != nil {
+			fmt.Println("Failed:", err)
+			os.Exit(1)
+		}
+
 		for {
-			go handleGesture(<-handler.Gestures, &cfg)
+			go handleGesture(<-handler.Gestures, xutil, &cfg)
 		}
 	}
 
+}
+
+type ActionCollection struct {
+	Swipe2Left string
+	Swipe3Left string
+	Swipe4Left string
+	Swipe5Left string
+
+	Swipe2Right string
+	Swipe3Right string
+	Swipe4Right string
+	Swipe5Right string
+
+	Swipe2Up string
+	Swipe3Up string
+	Swipe4Up string
+	Swipe5Up string
+
+	Swipe2Down string
+	Swipe3Down string
+	Swipe4Down string
+	Swipe5Down string
+
+	Pinch2 string
+	Pinch3 string
+	Pinch4 string
+	Pinch5 string
+
+	Spread2 string
+	Spread3 string
+	Spread4 string
+	Spread5 string
 }
 
 type Config struct {
 	Device struct {
 		Path string
 	}
-	Actions struct {
-		Swipe2Left string
-		Swipe3Left string
-		Swipe4Left string
-		Swipe5Left string
-
-		Swipe2Right string
-		Swipe3Right string
-		Swipe4Right string
-		Swipe5Right string
-
-		Swipe2Up string
-		Swipe3Up string
-		Swipe4Up string
-		Swipe5Up string
-
-		Swipe2Down string
-		Swipe3Down string
-		Swipe4Down string
-		Swipe5Down string
-
-		Pinch2 string
-		Pinch3 string
-		Pinch4 string
-		Pinch5 string
-
-		Spread2 string
-		Spread3 string
-		Spread4 string
-		Spread5 string
-	}
+	Actions map[string]*ActionCollection
 }
