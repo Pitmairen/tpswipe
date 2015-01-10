@@ -8,11 +8,11 @@ import (
 	"github.com/BurntSushi/xgbutil/ewmh"
 	"github.com/BurntSushi/xgbutil/icccm"
 	"github.com/gvalkov/golang-evdev/evdev"
+	"github.com/mattn/go-shellwords"
 	"math"
 	"os"
 	"os/exec"
 	"os/user"
-	"strings"
 	"time"
 )
 
@@ -483,7 +483,12 @@ func getGestureTypeName(gesture gestureType) string {
 // Create a command from a string
 func createCommand(command string) *exec.Cmd {
 
-	args := strings.Fields(command)
+	args, err := shellwords.Parse(command)
+
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
 
 	if len(args) > 1 {
 		return exec.Command(args[0], (args[1:])...)
