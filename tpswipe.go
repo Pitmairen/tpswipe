@@ -595,16 +595,11 @@ func getCommand(gest Gesture, actions *ActionCollection) *exec.Cmd {
 }
 
 // Do something when a gesture arrives
-func handleGesture(gest Gesture, xutil *xgbutil.XUtil, cfg *Config) {
+func handleGesture(gest *Gesture, xutil *xgbutil.XUtil, cfg *Config) {
 
 	var cmd *exec.Cmd
 
-	className, err := getActiveWindowClass(xutil)
-
-	if err != nil {
-		fmt.Println("Failed to get active window.", err)
-		return
-	}
+	className, _ := getActiveWindowClass(xutil)
 
 	actions := cfg.Actions[className]
 
