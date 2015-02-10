@@ -13,6 +13,9 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"reflect"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -201,6 +204,12 @@ type EventHandler struct {
 	suspend bool
 	// Channel for detected gestures
 	Gestures chan Gesture
+
+	// The number of fingerCounts that have gestures
+	// defined in the config. There is no need to detect
+	// gestures if the no action is defined for that number
+	// of fingers tounching.
+	configuredFingers map[int]bool
 }
 
 func (handler *EventHandler) resetFingers() {
@@ -239,8 +248,7 @@ func (handler *EventHandler) detectGesture() {
 	timeDiff := time.Since(handler.checkTimer)
 
 	// Do we have enought finger or enought time passed since the last reset
-	if handler.fingerCount < 2 || timeDiff < (CHECK_DELAY*time.Millisecond) {
-
+	if _, ok := handler.configuredFingers[handler.fingerCount]; !ok || handler.fingerCount < 2 || timeDiff < (CHECK_DELAY*time.Millisecond) {
 		// fmt.Println(handler.fingerCount, timeDiff)
 		return
 	}
@@ -516,7 +524,7 @@ func getActiveWindowClass(xutil *xgbutil.XUtil) (string, error) {
 
 }
 
-func getCommand(gest Gesture, actions *ActionCollection) *exec.Cmd {
+func getCommand(gest *Gesture, actions *ActionCollection) *exec.Cmd {
 
 	var cmd *exec.Cmd
 
@@ -630,6 +638,40 @@ func handleGesture(gest *Gesture, xutil *xgbutil.XUtil, cfg *Config) {
 
 }
 
+// Get the finger counts that have actions defined in the
+// config.
+func getConfiguredFingers(cfg *Config) map[int]bool {
+
+	fingers := make(map[int]bool)
+
+	for _, actions := range cfg.Actions {
+
+		val := reflect.ValueOf(*actions)
+
+		for i := 0; i < val.NumField(); i++ {
+
+			field := val.Field(i)
+
+			if len(field.String()) == 0 {
+				continue
+			}
+
+			for j := 1; j <= 5; j++ {
+
+				if strings.Index(val.Type().Field(i).Name, strconv.Itoa(j)) != -1 {
+					fingers[j] = true
+				}
+
+			}
+
+		}
+
+	}
+
+	return fingers
+
+}
+
 func main() {
 
 	usr, err := user.Current()
@@ -666,7 +708,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler := EventHandler{Gestures: make(chan Gesture)}
+	configuredFingers := getConfiguredFingers(&cfg)
+
+	handler := EventHandler{Gestures: make(chan Gesture), configuredFingers: configuredFingers}
 
 	// Listen for events
 	go handler.run(dev)
@@ -687,7 +731,10 @@ func main() {
 		}
 
 		for {
-			go handleGesture(<-handler.Gestures, xutil, &cfg)
+
+			gest := <-handler.Gestures
+			go handleGesture(&gest, xutil, &cfg)
+
 		}
 	}
 
