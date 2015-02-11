@@ -443,22 +443,6 @@ func calculateCircumference(points [][2]int) int {
 
 }
 
-/*
-Helperfunction to get the number of fingers touching.
-
-E.g if the three fingers are touching we will get an event like:
-(fingerCount=3 and isTouching=true) then this returns 3
-If one finger is released we get an event like:
-(fingerCount=3 and isTouching=false) then this returns 2
-*/
-func getFingerCount(fingerCount, isTouching int) int {
-
-	if isTouching == 0 {
-		return fingerCount - 1
-	}
-	return fingerCount
-}
-
 // Calculate distance between two points
 func calculateDistance(x0, y0, x, y int) int {
 
