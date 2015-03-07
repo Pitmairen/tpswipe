@@ -32,18 +32,20 @@ const (
 )
 
 const (
-	DIST_SWIPE  = 1100 // The distance the finger must move to trigger a swipe (unknown unit)
-	DIST_OTHER  = 500  // The distance the finger must move to trigger other gestures (unknown unit)
-	CHECK_DELAY = 50   // Delay between checking for gestures (ms)
+	DIST_SWIPE       = 1100 // The distance the finger must move to trigger a swipe (unknown unit)
+	DIST_OTHER       = 500  // The distance the finger must move to trigger other gestures (unknown unit)
+	DIST_CONTINUOUS  = 50   // The distance the finger must move to trigger a continuous gesture (unknown unit)
+	CHECK_DELAY      = 50   // Delay between checking for gestures (ms)
+	CONTINUOUS_DELAY = 10   // Delay between checking for continuous gestures (ms)
 )
 
 type Gesture struct {
 	GestureType gestureType
 	FingerCount int
+	Continuous  bool
 }
 
 func (gest Gesture) String() string {
-
 	return fmt.Sprintf("%s(%d)", getGestureTypeName(gest.GestureType), gest.FingerCount)
 
 }
@@ -202,6 +204,12 @@ type EventHandler struct {
 	// from the pad. Used to prevent reporting of multiple gestures in
 	// one movement.
 	suspend bool
+	// True while handling an continuous gesture. This is a
+	// gesture which emits more thatn a single events when activated.
+	// Currently only implemented for spread and pinch gestures.
+	continuousGesture bool
+	// Time of last continuous event
+	lastContinuousEvent time.Time
 	// Channel for detected gestures
 	Gestures chan Gesture
 
@@ -237,7 +245,27 @@ func (handler *EventHandler) handleSynEvent(event *evdev.InputEvent) {
 
 	// Only check for gestures after a report event and not suspended
 	if event.Code == evdev.SYN_REPORT && !handler.suspend {
-		handler.detectGesture()
+
+		if !handler.continuousGesture {
+			handler.detectGesture()
+		} else {
+			handler.handleContinuousGesture()
+		}
+	}
+
+}
+
+func (handler *EventHandler) handleContinuousGesture() {
+
+	timeDiff := time.Since(handler.lastContinuousEvent)
+	if timeDiff > time.Millisecond*CONTINUOUS_DELAY {
+
+		gesture := handler.calculateGesture()
+		if gesture != UNKNOWN {
+			handler.resetFingers()
+			handler.emitGesture(Gesture{gesture, handler.fingerCount, true})
+			handler.lastContinuousEvent = time.Now()
+		}
 	}
 
 }
@@ -294,7 +322,7 @@ func (handler *EventHandler) detectGesture() {
 
 		if handler.lastGesture != gesture {
 
-			handler.emitGesture(Gesture{gesture, handler.fingerCount})
+			handler.emitGesture(Gesture{gesture, handler.fingerCount, false})
 			// Suspend gestures until fingers are lifted from the pad
 			handler.suspend = true
 		}
@@ -308,9 +336,9 @@ func (handler *EventHandler) detectGesture() {
 
 			if handler.lastGesture != gesture {
 
-				handler.emitGesture(Gesture{gesture, handler.fingerCount})
-				// Suspend gestures until fingers are lifted from the pad
-				handler.suspend = true
+				handler.emitGesture(Gesture{gesture, handler.fingerCount, false})
+				// Handle continuous gestures
+				handler.continuousGesture = true
 
 			}
 
@@ -349,6 +377,7 @@ func (handler *EventHandler) handleAbsEvent(event *evdev.InputEvent) {
 		}
 
 		handler.resetFingers()
+		handler.continuousGesture = false
 
 		// If previously no fingers was toucing we get
 		// ready to handle a new gesture
@@ -379,7 +408,10 @@ func (handler *EventHandler) calculateGesture() gestureType {
 		if !fing.IsActive {
 			continue
 		}
-		if !fing.hasSwiped(DIST_OTHER) {
+		if !handler.continuousGesture && !fing.hasSwiped(DIST_OTHER) {
+			return UNKNOWN
+		}
+		if handler.continuousGesture && !fing.hasSwiped(DIST_CONTINUOUS) {
 			return UNKNOWN
 		}
 
@@ -558,26 +590,53 @@ func getCommand(gest *Gesture, actions *ActionCollection) *exec.Cmd {
 			cmd = createCommand(actions.Swipe5Right)
 		}
 	case PINCH:
-		switch {
-		case gest.FingerCount == 2 && len(actions.Pinch2) > 0:
-			cmd = createCommand(actions.Pinch2)
-		case gest.FingerCount == 3 && len(actions.Pinch3) > 0:
-			cmd = createCommand(actions.Pinch3)
-		case gest.FingerCount == 4 && len(actions.Pinch4) > 0:
-			cmd = createCommand(actions.Pinch4)
-		case gest.FingerCount == 5 && len(actions.Pinch5) > 0:
-			cmd = createCommand(actions.Pinch5)
+
+		if gest.Continuous {
+			switch {
+			case gest.FingerCount == 2 && len(actions.Pinch2Continuous) > 0:
+				cmd = createCommand(actions.Pinch2Continuous)
+			case gest.FingerCount == 3 && len(actions.Pinch3Continuous) > 0:
+				cmd = createCommand(actions.Pinch3Continuous)
+			case gest.FingerCount == 4 && len(actions.Pinch4Continuous) > 0:
+				cmd = createCommand(actions.Pinch4Continuous)
+			case gest.FingerCount == 5 && len(actions.Pinch5Continuous) > 0:
+				cmd = createCommand(actions.Pinch5Continuous)
+			}
+		} else {
+			switch {
+			case gest.FingerCount == 2 && len(actions.Pinch2) > 0:
+				cmd = createCommand(actions.Pinch2)
+			case gest.FingerCount == 3 && len(actions.Pinch3) > 0:
+				cmd = createCommand(actions.Pinch3)
+			case gest.FingerCount == 4 && len(actions.Pinch4) > 0:
+				cmd = createCommand(actions.Pinch4)
+			case gest.FingerCount == 5 && len(actions.Pinch5) > 0:
+				cmd = createCommand(actions.Pinch5)
+			}
 		}
 	case SPREAD:
-		switch {
-		case gest.FingerCount == 2 && len(actions.Spread2) > 0:
-			cmd = createCommand(actions.Spread2)
-		case gest.FingerCount == 3 && len(actions.Spread3) > 0:
-			cmd = createCommand(actions.Spread3)
-		case gest.FingerCount == 4 && len(actions.Spread4) > 0:
-			cmd = createCommand(actions.Spread4)
-		case gest.FingerCount == 5 && len(actions.Spread5) > 0:
-			cmd = createCommand(actions.Spread5)
+		if gest.Continuous {
+			switch {
+			case gest.FingerCount == 2 && len(actions.Spread2Continuous) > 0:
+				cmd = createCommand(actions.Spread2Continuous)
+			case gest.FingerCount == 3 && len(actions.Spread3Continuous) > 0:
+				cmd = createCommand(actions.Spread3Continuous)
+			case gest.FingerCount == 4 && len(actions.Spread4Continuous) > 0:
+				cmd = createCommand(actions.Spread4Continuous)
+			case gest.FingerCount == 5 && len(actions.Spread5Continuous) > 0:
+				cmd = createCommand(actions.Spread5Continuous)
+			}
+		} else {
+			switch {
+			case gest.FingerCount == 2 && len(actions.Spread2) > 0:
+				cmd = createCommand(actions.Spread2)
+			case gest.FingerCount == 3 && len(actions.Spread3) > 0:
+				cmd = createCommand(actions.Spread3)
+			case gest.FingerCount == 4 && len(actions.Spread4) > 0:
+				cmd = createCommand(actions.Spread4)
+			case gest.FingerCount == 5 && len(actions.Spread5) > 0:
+				cmd = createCommand(actions.Spread5)
+			}
 		}
 
 	}
@@ -750,10 +809,20 @@ type ActionCollection struct {
 	Pinch4 string
 	Pinch5 string
 
+	Pinch2Continuous string
+	Pinch3Continuous string
+	Pinch4Continuous string
+	Pinch5Continuous string
+
 	Spread2 string
 	Spread3 string
 	Spread4 string
 	Spread5 string
+
+	Spread2Continuous string
+	Spread3Continuous string
+	Spread4Continuous string
+	Spread5Continuous string
 }
 
 type Config struct {
