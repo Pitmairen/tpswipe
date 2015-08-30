@@ -7,7 +7,7 @@ import (
 	"github.com/BurntSushi/xgbutil"
 	"github.com/BurntSushi/xgbutil/ewmh"
 	"github.com/BurntSushi/xgbutil/icccm"
-	"github.com/gvalkov/golang-evdev/evdev"
+	"github.com/gvalkov/golang-evdev"
 	"github.com/mattn/go-shellwords"
 	"math"
 	"os"
